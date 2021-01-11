@@ -59,4 +59,5 @@ If you found this project useful, then please consider giving it a :star: on Git
 ## Credits
 
 - <a href="https://github.com/stefanalexlupu/secret-santa"> Secret Santa </a>
-- <a href="https://github.com/prajwalx/collaborative-drawing-tool"> Collaborative Drawing Tool </a>.
+- <a href="https://github.com/prajwalx/collaborative-drawing-tool"> Collaborative Drawing Tool </a>
+- <a href="https://github.com/naotaro0123/3D-Socket">3D-Socket</a>
