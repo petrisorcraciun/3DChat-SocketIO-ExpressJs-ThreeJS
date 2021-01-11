@@ -32,6 +32,7 @@ npm run start
 - Notification sound for each message received when the chat is hidden;
 - The group administrator can mute or block users;
 - List of all members who are in a room;
+- Drawing board;
 
 
 ## Future plans  ⚡
@@ -44,7 +45,7 @@ npm run start
 
 <img src="https://raw.githubusercontent.com/petrisorcraciun/ChatAPP-Socket.io-ExpressJS/main/images/gif.gif" height="300px" >
 <img src="https://raw.githubusercontent.com/petrisorcraciun/ChatAPP-Socket.io-ExpressJS/main/images/gif2.gif" height="300px" >
-
+<img src="https://raw.githubusercontent.com/petrisorcraciun/ChatAPP-Socket.io-ExpressJS/main/images/gif3.gif" height="300px" >
 
 ## Contact 📝
 If you need any help, you can connect with me.
