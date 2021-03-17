@@ -45,7 +45,7 @@ npm run start
 
 <img src="https://raw.githubusercontent.com/petrisorcraciun/ChatAPP-Socket.io-ExpressJS/main/images/gif.gif" height="300px" >
 <img src="https://raw.githubusercontent.com/petrisorcraciun/ChatAPP-Socket.io-ExpressJS/main/images/gif2.gif" height="300px" >
-<img src="https://raw.githubusercontent.com/petrisorcraciun/ChatAPP-Socket.io-ExpressJS/main/images/gif3.gif" height="300px" >
+<img src="https://raw.githubusercontent.com/petrisorcraciun/3DChat-SocketIO-ExpressJs-ThreeJS/main/images/gif3.gif" height="300px" >
 
 ## Contact 📝
 If you need any help, you can connect with me.
