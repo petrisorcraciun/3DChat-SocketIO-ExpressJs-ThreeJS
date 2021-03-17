@@ -1,5 +1,3 @@
-
-
 <p id="members" class="text-center font-bold text-gray-700"></p>
 
 
@@ -24,9 +22,16 @@
 </button>
 
 
+
+<button class="bg-blue-500 hover:bg-blue-700 btn-sm text-white font-bold py-1 rounded-md flex-shrink-1 mt-2" id="btnCallPet"  
+    style="width: 75px; "><i class="fa fa-paw fa-3x"></i>
+</button>
+
+
     <div style="width: 75px; " class="mt-3 text-center">
       <h6> <font color="white"> Online: </font><br> <span id="connectCount" style="color: white">  </span></h6>
 </div>
+
 </div>
 
 
@@ -268,8 +273,12 @@ var dataJSON      = JSON.parse(returnJson.replace(/&quot;/g,'"'));
       <div class="modal-header">
         Files
       </div>
-      <div class="modal-body p-0">
-        
+        <div class="modal-body p-0">
+
+
+          <input type="file" name="file" id="file">
+
+
       </div>
        
       <div class="card-footer">
@@ -300,20 +309,37 @@ var dataJSON      = JSON.parse(returnJson.replace(/&quot;/g,'"'));
 </div>
 
 
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
 
 
 <script src="/socket.io/socket.io.js" defer></script>
 <script src="/room.js" defer></script>
-<script src="//threejs.org/build/three.js"></script>
+
 
 <audio id="myAudio">
-  <source src="http://localhost:3000/notification.mp3" type="audio/mpeg">
+  <source src="/notification.mp3" type="audio/mpeg">
 </audio>
 
-<script src="http://localhost:3000/3D/three.min.js"></script>
-<script src='http://localhost:3000/3D/MD2CharacterComplex.js'></script>
-<script src='http://localhost:3000/3D/Detector.js'></script>
-<script src='http://localhost:3000/3D/stats.min.js'></script>
+<script src="/3D/three.min.js"></script>
+<script src="/3D/three.module.js"></script>
+<script src="/3D/stats.min.js"></script>
+
+<script src="/3D/OrbitControls.js"></script>
+
+<script src="/3D/FBXLoader.js"></script>
+<script src="/3D/libs/inflate.min.js"></script>
+<script src="/3D/curves/NURBSCurve.js"></script>
+
+
+<script src='/3D/Detector.js'></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js" integrity="sha512-UNM1njAgOFUa74Z0bADwAq8gbTcqZC8Ej4xPSzpnh0l6KMevwvkBvbldF9uR++qKeJ+MOZHRjV1HZjoRvjDfNQ==" crossorigin="anonymous"></script>
+
+
+
+
+
+
 
 <style>
 body {

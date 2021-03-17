@@ -4,30 +4,16 @@ const SCREEN_HEIGHT = window.innerHeight;
 
 let networkReady = null;
 let socketT = null;
-let playerlist = null;
-let avatarlist = null;
-let playerCharacter = null;
+let playerlist = [];
+let avatarlist = [];
+let playerCharacter = { };
 
-let configOgro = {
-  baseUrl: 'http://localhost:3000/3D/ogro/',
-  body: 'ogro-light.js',
-  skins: ['grok.jpg'],
-  weapons: [['weapon-light.js', 'weapon.jpg']],
-  animations: {
-    move: 'run',
-    idle: 'stand',
-    jump: 'jump',
-    attack: 'attack',
-    crouchMove: 'cwalk',
-    crouchIdle: 'cstand',
-    crouchAttach: 'crattack'
-  },
-  walkSpeed: 350,
-  crouchSpeed: 175
-};
 
-let container, camera, scene, renderer;
-let characters = [];
+let camera, scene, renderer, stats;
+let mixer;
+let petIsActive = false;
+
+
 let controls = {
   moveForward: false,
   moveBackward: false,
@@ -36,9 +22,8 @@ let controls = {
 };
 let clock = new THREE.Clock();
 let myId = localStorage.getItem("userName")
-playerlist = [];
-avatarlist = [];
 
+let characters = [];
 
 if(localStorage.getItem("personName") == null)
 {
@@ -46,10 +31,7 @@ if(localStorage.getItem("personName") == null)
 } else if(dataJSON.list[0].passwordRoom.length > 0){
   $('#mPassword').modal({backdrop: 'static', keyboard: false})
 } else {
-  
- 
   createWorld();
-  createCaracter(localStorage.getItem("username"));
   connectRoom();
 }
 
@@ -73,6 +55,9 @@ connect.addEventListener('click', () => {
 btnChat.addEventListener('click', () => {
   document.getElementById("unreadMessagesCount").innerHTML = 0;
 })
+
+
+
 var connectAfterEnterPassword = document.getElementById('btnCheckPassword');
 connectAfterEnterPassword.addEventListener('click', () => {
     if(dataJSON.list[0].passwordRoom == document.getElementById('passwordRoomInput').value){
@@ -85,42 +70,43 @@ connectAfterEnterPassword.addEventListener('click', () => {
 
 
 
+
+
 function createWorld()
 {
       if (!Detector.webgl) Detector.addGetWebGLMessage();
-        const SCREEN_WIDTH = window.innerWidth;
+        const SCREEN_WIDTH  = window.innerWidth;
         const SCREEN_HEIGHT = window.innerHeight;
 
         container = document.createElement('div');
         document.body.appendChild(container);
-        // カメラ追加(遠視投影)
-        camera = new THREE.PerspectiveCamera(
-          45,
-          window.innerWidth / window.innerHeight,
-          1,
-          4000
-        );
-        camera.position.set(0, 150, 1300);
-        scene           = new THREE.Scene();
-        scene.fog       = new THREE.Fog(0x000000, 1000, 4000);
-        scene.add(camera);
-        scene.add(new THREE.AmbientLight(0x222222));
-        var light                 = new THREE.DirectionalLight(0xffffff, 2.25);
-        light.position.set(200, 450, 500);
-        light.castShadow          = true;
-        light.shadowMapWidth      = 1024;
-        light.shadowMapHeight     = 1024;
-        light.shadowMapDarkness   = 0.95;
-        light.shadowCascade       = true;
-        light.shadowCascadeCount  = 3;
-        light.shadowCascadeNearZ  = [-1.0, 0.995, 0.998];
-        light.shadowCascadeFarZ   = [0.995, 0.998, 1.0];
-        light.shadowCascadeWidth  = [1024, 1024, 1024];
-        light.shadowCascadeHeight = [1024, 1024, 1024];
-        scene.add(light);
-
+       
+        camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 5000 );
         
-        let gt            = THREE.ImageUtils.loadTexture('http://localhost:3000/grasslight-big.jpg');
+        camera.position.set( 0, 150, 600 );
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color( 0xbfd1e5 );
+				//scene.background = new THREE.Color( 0xa0a0a0 );
+				//scene.fog = new THREE.Fog( 0xa0a0a0, 1000, 5000 );
+        scene.add(camera);
+        const hemiLight = new THREE.HemisphereLight( 0xffffff, 0x444444 );
+				hemiLight.position.set( 0, 200, 0 );
+				scene.add( hemiLight );
+				const dirLight = new THREE.HemisphereLight( 0xffffff, 0x444444 );
+				dirLight.position.set( 0, 200, 0 );
+				scene.add( dirLight );
+        const mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 10000, 10000 ), new THREE.MeshPhongMaterial( { color: 0x999999, depthWrite: false } ) );
+		    mesh.rotation.x = - Math.PI / 2;
+		    mesh.receiveShadow = true;
+				scene.add( mesh );
+				const grid = new THREE.GridHelper( 5000, 40, 0x000000, 0x000000 );
+		    grid.material.opacity = 0.2;
+	    	grid.material.transparent = true;
+		    scene.add( grid );
+
+
+        let gt            = THREE.ImageUtils.loadTexture('../../grasslight-big.jpg');
         let gg            = new THREE.PlaneGeometry(16000, 16000);
         let gm            = new THREE.MeshPhongMaterial({ color: 0xffffff, map: gt });
         let ground        = new THREE.Mesh(gg, gm);
@@ -129,25 +115,28 @@ function createWorld()
         ground.material.map.wrapS = ground.material.map.wrapT = THREE.RepeatWrapping;
         ground.receiveShadow = true;
         scene.add(ground);
-        renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
-        renderer.setClearColor(scene.fog.color, 1);
-        container.appendChild(renderer.domElement);
-        renderer.gammaInput = true;
-        renderer.gammaOutput = true;
-        renderer.shadowMapEnabled = true;
-        renderer.shadowMapCascade = true;
-        renderer.shadowMapType = THREE.PCFSoftShadowMap;
-      
+
+
+        renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.shadowMap.enabled = true;
+				container.appendChild( renderer.domElement );
         stats = new Stats();
         container.appendChild(stats.domElement);
-    
-        window.addEventListener('resize', onWindowResize, false);
-        document.addEventListener('keydown', onKeyDown, false);
-        document.addEventListener('keyup', onKeyUp, false);
-      
-   
+
+        const controls = new OrbitControls( camera, renderer.domElement );
+				controls.target.set( 0, 100, 0 );
+        controls.update();
+
+
+				window.addEventListener( 'resize', onWindowResize );
+
+        //document.addEventListener('keydown', onKeyDown, false);
+        //document.addEventListener('keyup', onKeyUp, false);
 }
+
+
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -157,27 +146,33 @@ function onWindowResize() {
 }
 
 function onKeyDown(event) {
+  console.log(playerCharacter)
   switch (event.keyCode) {
     case 38: /*up*/
     case 87 /*W*/:
-      playerCharacter.controls.moveForward = true;
+      playerCharacter.position.x += 5;
       break;
     case 40: /*down*/
     case 83 /*S*/:
-      playerCharacter.controls.moveBackward = true;
+      playerCharacter.position.x -= 5;
       break;
     case 37: /*left*/
     case 65 /*A*/:
-      playerCharacter.controls.moveLeft = true;
+      playerCharacter.position.z += 5;
       break;
     case 39: /*right*/
     case 68 /*D*/:
-      playerCharacter.controls.moveRight = true;
+      playerCharacter.position.z -= 5;
       break;
   }
+
+
+  
+
 }
 
 function onKeyUp(event) {
+  console.log(playerCharacter)
   switch (event.keyCode) {
     case 38: /*up*/
     case 87 /*W*/:
@@ -237,7 +232,6 @@ function onDocumentTouchStart( event ) {
   }
 }
 
-
 function onDocumentTouchMove( event ) {
   if ( event.touches.length == 1 ) {
     event.preventDefault();
@@ -247,44 +241,139 @@ function onDocumentTouchMove( event ) {
   }
 }
 
+const animations = {};
+const game = this;
+let anims = ['Walking', 'Walking Backwards', 'Turn', 'Running', 'Pointing Gesture'];
 
+function createCharacter(id, pozX, pozZ) {
+      const loader = new FBXLoader();
+      const temp   = [];
 
+			    loader.load( '../../3D/models/fbx/Nathan.fbx', function ( object ) {
+					mixer        = new THREE.AnimationMixer( object );
+          playerCharacter.mixer = object.mixer;
+          temp.push(object);
+					object.traverse( function ( child ) {
+						if ( child.isMesh ) {
+							child.castShadow = true;
+							child.receiveShadow = true;
+						  }
+					  } 
+          );
 
-function createCaracter(id) {
-  
-  let character = new THREE.MD2CharacterComplex();
-  character.scale = 3;
-  character.controls = controls;
-  characters.push(character);
-  let baseCharacter = new THREE.MD2CharacterComplex();
-  baseCharacter.scale = 3;
-  baseCharacter.onLoadComplete = () => {
-    let k = 0;
-    playerCharacter = characters[k];
-    playerCharacter.shareParts(baseCharacter);
-    playerCharacter.enableShadows(true);
-    playerCharacter.setWeapon(0);
-    playerCharacter.setSkin(0);
-    playerCharacter.myId = id;
-    playerCharacter.root.position.x = 50;
-    playerCharacter.root.position.z = 200;
-    scene.add(playerCharacter.root);
-    k++;
-    playerlist.push(playerCharacter);
-  };
-  baseCharacter.loadParts(configOgro);
+        playerCharacter = temp[0];
+        playerCharacter.myId = id;
+        playerCharacter.name = id;
+        playerCharacter.position.x = pozX;
+        playerCharacter.position.z = pozZ;
+        scene.add(playerCharacter);
+
+        // animations.Idle = object.animations[0];
+
+        loadNextAnim(loader);
+       //createColliders();
+    } );
+    return temp;
 }
+
+
+function loadNextAnim(loader){
+  let anim = anims.pop();
+
+  loader.load( '../../3D/models/anims/' + anim +'.fbx', function( object ){
+    animations[anim] = object.animations[0];
+    if (anims.length>0){
+      loadNextAnim(loader);
+    }else{
+      createCameras();
+      //createColliders();
+      delete anims;
+      action = "Walking";
+      animate();
+    }
+  });	
+}
+
+function createColliders(){
+  const geometry = new THREE.BoxGeometry(1500, 440, 500);
+  const material = new THREE.MeshBasicMaterial({color:0x222222, wireframe:true});
+  
+  colliders = [];
+  
+  for (let x=-5000; x<5000; x+=1000){
+      for (let z=-5000; z<5000; z+=1000){
+          if (x==0 && z==0) continue;
+          const box = new THREE.Mesh(geometry, material);
+          box.position.set(x, 250, z);
+          scene.add(box);
+          colliders.push(box);
+      }
+  }
+  
+  const geometry2 = new THREE.BoxGeometry(1000, 500, 1000);
+  const stage = new THREE.Mesh(geometry2, material);
+  stage.position.set(0, 250, 0);
+  colliders.push(stage);
+  scene.add(stage);
+}
+
+
+
+function createFile3D (id) {
+  const loader = new FBXLoader();
+  const temp   = [];
+
+  loader.load( '../3D/models/fbx/cat/CatMac.fbx', function ( object ) {
+      // mixer        = new THREE.AnimationMixer( object );
+      // const action = mixer.clipAction( object.animations[0]);
+      // action.play();
+    temp.push(object);
+    file = temp[0];
+    file.myId = id;
+    file.position.x = 0;
+    file.position.z = 0;
+    scene.add(file);
+  });
+}
+
+
+function createPet (id, pozX, pozY, pozZ) {
+  const loader = new FBXLoader();
+  const temp   = [];
+
+  loader.load( '../3D/models/fbx/cat/CatMac.fbx', function ( object ) {
+      temp.push(object);
+
+      object.traverse( function ( child ) {
+        if ( child.isMesh ) {
+          child.castShadow    = true;
+          child.receiveShadow = true;
+          }
+        } 
+      );
+
+    pet = temp[0];
+    pet.myId = id;
+    pet.name = "Pet" + id;
+    pet.position.x = pozX + 50;
+    pet.position.z = pozZ + 50;
+    scene.add(pet);
+  });
+
+  return temp;
+}
+
+
 
 function connectRoom()
 {
-      var socket = io({ transports: ['websocket'], upgrade: false });
+      var socket    = io({ transports: ['websocket'], upgrade: false });
       var username  = localStorage.getItem("username");
 
-      var roomIDJ = dataJSON.list[0].roomID;
-      let clock = new THREE.Clock();
-      let delta = clock.getDelta();
-      networkReady = true;
-      
+      var roomIDJ   = dataJSON.list[0].roomID;
+      let clock     = new THREE.Clock();
+      let delta     = clock.getDelta();
+      networkReady  = true;
 
       socket.on('reconnect', () => {
             networkReady = true;
@@ -295,22 +384,16 @@ function connectRoom()
             roomID        : roomIDJ,
             userToken     : USER_ID,
             silent        : true,
-            posX 	        : characters[0].root.position.x,
-            posZ	        : characters[0].root.position.z,
-            rotY	        : characters[0].root.rotation._y,
+            posX 	        : Math.floor(Math.random() * Math.floor(Math.random() * 500)),
+            posZ	        : Math.floor(Math.random() * Math.floor(Math.random() * 1000)),
+            rotY	        : characters[0].rotation._y,
             controls      : characters[0].controls,
             delta         : delta
-          })
+          }),
+          
         );
-      })
+      });
 
-      var USER_ID = null
-
-      if (dataJSON.list[0].adminUser == localStorage.getItem("username"))
-      {
-        var element = document.getElementById("btnModalAllUsers");
-        element.style.display  = "block";
-      }
 
       socket.emit('join-room', 
           JSON.stringify({
@@ -319,13 +402,34 @@ function connectRoom()
               Email         : localStorage.getItem("emailAddress"), 
               roomID        : roomIDJ,
               userToken     : USER_ID,
-              posX 	        : characters[0].root.position.x,
-              posZ	        : characters[0].root.position.z,
-              rotY	        : characters[0].root.rotation._y,
-              controls      : characters[0].controls,
+              posX 	        : Math.floor(Math.random() * Math.floor(Math.random() * 500)),
+              posZ	        : Math.floor(Math.random() * Math.floor(Math.random() * 1000)),
+              rotY	        : 0,
+              controls      : "right",
               delta         : delta
-        })
-      );
+        }),
+      );  
+
+      
+
+      // event call pet
+
+      var btnCallPet = document.getElementById('btnCallPet');
+      btnCallPet.addEventListener('click', () => {
+          var selectedObject = scene.getObjectByName(localStorage.getItem("username"));
+          var position = {x: selectedObject.position.x, y: selectedObject.position.y, z: selectedObject.position.z}
+          socket.emit('callPet', { roomID: dataJSON.list[0].roomID, userName: localStorage.getItem("username"), position: position});
+      })  
+
+
+      var USER_ID = null
+
+      if (dataJSON.list[0].adminUser == localStorage.getItem("username"))
+      {
+        var element = document.getElementById("btnModalAllUsers");
+        element.style.display  = "block";
+      }
+      
 
       function onModalAllUsersClick() {
         socket.emit('oModalForAllUsers', dataJSON.list[0].roomID)
@@ -345,7 +449,7 @@ function connectRoom()
       var formInput         = document.getElementById('m');
       var messagesContainer = document.getElementById('messages');
       var membersList       = document.getElementById('membersList');
-      var btnModalAllUsers       = document.getElementById('btnModalAllUsers')
+      var btnModalAllUsers  = document.getElementById('btnModalAllUsers')
 
       function onRoomJoin(uuid) {
               //console.log('', uuid)
@@ -362,7 +466,7 @@ function connectRoom()
             card.className =  "card col-md-3 border ml-2 mb-2 "; 
 
             var img = document.createElement('img');
-            img.src = users[i].ImageURL;
+            //img.src = users[i].ImageURL;
             img.className = "rounded-circle text-center mx-auto mt-2 mb-1";
             img.style  = "height: 80px; width: 80px; border: 2px solid black";
             card.appendChild(img);
@@ -371,9 +475,9 @@ function connectRoom()
             item.className  = "card-body shadow";
             item.className  = 'text-gray-700 text-center';
 
-            var fontColor = dataJSON.list[0].adminUser == users[i].userName ? "<font color=red>" : "<font color=black>";
+            //var fontColor = dataJSON.list[0].adminUser == users[i].userName ? "<font color=red>" : "<font color=black>";
 
-            item.innerHTML = "<span class='dot'></span> " + fontColor + 
+            item.innerHTML = "<span class='dot'></span> " + 
                       "<a href='#' class='temp' id=temp" + users[i].userName + "><b> " + users[i].personName + "</b> </a></font><br>" 
                       + (users[i].isMuted == 1 ? '<span class="badge badge-warning mt-1 " style="font-size:11px" > Muted </span>': "")
                       + (dataJSON.list[0].adminUser == users[i].userName ? '<span class="badge badge-danger mt-1" style="font-size:11px" > Admin </span>': "");
@@ -683,17 +787,54 @@ function connectRoom()
       if(!from_server)
           socket.emit('update_canvas', JSON.stringify({roomID, x1,y1,x2,y2,color}));
       
-      context.beginPath();
-      context.strokeStyle = color;
-      context.lineWidth = 5;
-      context.lineCap = 'round'
-      context.moveTo(x1, y1);
-      context.lineTo(x2, y2);
-      context.stroke();
-      context.closePath();
+        context.beginPath();
+        context.strokeStyle = color;
+        context.lineWidth = 5;
+        context.lineCap = 'round'
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.stroke();
+        context.closePath();
       }
 
+      function newFileHas(data){
+        //alert("User: " + data.userName + " a incarcat : " + data.fileName);
+
+        createFile3D(data.fileName);
+
+      }
+
+
+      function callPetServer(data){
+        var selectedObject = scene.getObjectByName("Pet" + data.userName);
+        if(!petIsActive){
+          createPet(data.userName, data.position.x, data.position.y, data.position.z);
+          petIsActive = true;
+        } else {
+            petIsActive = false;
+            scene.remove(selectedObject);
+        }
+      }
+
+      function removeCharacter(username){
+        removePet(username);
+        var selectedObject = scene.getObjectByName(username);
+        scene.remove(selectedObject);
+      }
+
+      function removePet(username){
+        var selectedObject = scene.getObjectByName("Pet" + username);
+        if(selectedObject != null){
+          scene.remove(selectedObject);
+        }
+      }
+
+
+
       socket.on('joined-room'       ,  onRoomJoin)
+      socket.on('newFile'           ,  newFileHas)
+      socket.on('callPet'           ,  callPetServer)
+      socket.on('removeCharacter'   ,  removeCharacter)
       socket.on('chat-message'      ,  onNewMessage)
       socket.on('user-connected'    ,  onStatusUpdate)
       socket.on('user-disconnected' ,  onStatusUpdate)
@@ -705,45 +846,20 @@ function connectRoom()
         function onRoomUpdate(users) {
           updateUsersList(users)
           updateCountUsers(users)
+          
+          for(i = 0;i<users.length;i++){
+            if(!scene.getObjectByName(users[i].userName))
+              createCharacter(users[i].userName, users[i].posX, users[i].posZ)
+            }
       })
+
       socket.on('update_canvas',function(data){
-
-        
           let {roomID, x1,y1,x2,y2,color} = JSON.parse(data);
-
           if(roomID == dataJSON.list[0].roomID)
             drawLine(context,x1,y1,x2,y2,color,true);
       });
-
       
       animate();
-
-      function createAvatar(avatar) {
-        let character = new THREE.MD2CharacterComplex();
-        character.scale = 3;
-        character.controls = controls;
-        characters.push(character);
-        let shadowCharacter = new THREE.MD2CharacterComplex();
-        shadowCharacter.scale = 3;
-        shadowCharacter.onLoadComplete = () => {
-          let k = 1 + avatarlist.length;
-          let avatarCharacter = characters[k];
-          avatarCharacter.shareParts(shadowCharacter);
-          avatarCharacter.enableShadows(true);
-          avatarCharacter.setWeapon(0);
-          avatarCharacter.setSkin(0);
-          avatarCharacter.myId = avatar.userName;
-          avatarCharacter.controls = avatar.controls;
-          avatarCharacter.update(avatar.delta);
-          avatarCharacter.root.position.x = avatar.posX;
-          avatarCharacter.root.position.z = avatar.posZ;
-          avatarCharacter.root.rotation._y = avatar.rotY;
-          scene.add(avatarCharacter.root);
-          k++;
-          avatarlist.push(avatarCharacter);
-        };
-        shadowCharacter.loadParts(configOgro);
-      }
 
       function onWindowResize(event) {
         renderer.setSize(window.innerWidth, SCREEN_HEIGHT);
@@ -751,83 +867,41 @@ function connectRoom()
         camera.updateProjectionMatrix();
       }
 
+  
       
 
-     
 
-     
+      // Upload file 
+      var file=$("#file")[0];
+      file.onchange=function(){
+        var formData=new FormData();
+        formData.append('file',file.files[0]);
 
-      // --- 
-
-
-
-
-      socket.on('message', function(event){
-        let data = JSON.parse(event);
-    
-        if (
-          typeof data.length !== 'undefined' &&
-          data[data.length - 1].type === 'join'
-        ) {
-          console.log(`${data[data.length - 1].id} 入室しました`);
-          for (let i = 0, cnt = data.length; i < cnt; i++) {
-            if (data[i].userName !== myId) {
-              createAvatar(data[i]);
-            }
-          }
-        }
-    
-        if (data.type === 'join') {
-          createAvatar(data);
-        }
-
-    
-        if (data.type == 'move') {
-          for (let i = 0, cnt = avatarlist.length; i < cnt; ++i) {
-            let orge = avatarlist[i];
-            if (data.id === orge.myId) {
-              orge.root.position.x = data.posX;
-              orge.root.position.z = data.posZ;
-              orge.bodyOrientation = data.rotY;
-              orge.controls = data.controls;
-              orge.update(data.delta);
-            }
-          }
-        }
-      });
-
-      // ---
-
-      function animate() {
-        requestAnimationFrame(animate);
-        render();
-        stats.update();
-      }
-      
-      function render() {
-        let delta = clock.getDelta();
-        characters[0].update(delta);
-      
-        if (networkReady) {
-          socket.emit(
-            'message',
-            JSON.stringify({
-              type: 'move',
-              id: username,
-              posX: characters[0].root.position.x,
-              posZ: characters[0].root.position.z,
-              rotY: characters[0].root.rotation._y,
-              controls: characters[0].controls,
-              delta: delta
-            })
-          );
+        var src=file.files[0].name,
+        formart=src.split(".")[1]; 
+        if(formart=="jpg"||formart=="png" || formart=="docx"||formart=="txt" || formart=="ppt" ||formart=="xlsx"||
+           formart=="zip" ||formart=="rar" || formart=="doc")
+        {
+          $.ajax({
+            url: '/upload',
+            type: 'POST',
+            data: formData,
+            cache: false,
+            contentType: false,
+            processData: false,
+            success: function(data){
+              if(data.code>0){
+                socket.emit(
+                  'newFileHasBeenUploaded', {fileName: data.file, roomID: dataJSON.list[0].roomID, userName: localStorage.getItem("username")});
+              }
+            } 
+          });
 
         }
-        renderer.render(scene, camera);
-      }
-      
+      };
+
+
 }
-
 
 let selected_color = 'red';
 function selectColor(color){
@@ -837,3 +911,64 @@ function selectColor(color){
 }
 
 
+
+
+function animate() {
+  const game = this;
+  const dt = new THREE.Clock().getDelta();
+  
+  requestAnimationFrame( function(){ game.animate(); } );
+
+  if (playerCharacter.mixer!==undefined) playerCharacter.mixer.update(dt);
+		
+    if (playerCharacter.action=='Walking'){
+			const elapsedTime = Date.now() - playerCharacter.actionTime;
+			if (elapsedTime>1000 && playerCharacter.move.forward>0){
+				action = 'Running';
+			}
+		}
+		
+		if (playerCharacter.move !== undefined) movePlayer(dt);
+
+  
+  if (playerCharacter.cameras!=undefined && playerCharacter.cameras.active!=undefined){
+    camera.position.lerp(playerCharacter.cameras.active.getWorldPosition(new THREE.Vector3()), 0.05);
+    const pos = playerCharacter.object.position.clone();
+    pos.y += 200;
+    camera.lookAt(pos);
+  }
+  
+      
+      if (this.sun != undefined){
+          this.sun.position.x = playerCharacterCharacter.object.position.x;
+          this.sun.position.y = playerCharacterCharacter.object.position.y + 200;
+          this.sun.position.z = playerCharacterCharacter.object.position.z + 100;
+          this.sun.target = playerCharacterCharacter.object;
+      }
+      
+  renderer.render( scene, camera );
+
+}
+
+
+
+function createCameras(){
+  const offset = new THREE.Vector3(0, 80, 0);
+  const front = new THREE.Object3D();
+  front.position.set(112, 100, 600);
+  front.parent = playerCharacter.object;
+  const back = new THREE.Object3D();
+  back.position.set(0, 300, -600);
+  back.parent = playerCharacter.object;
+  const wide = new THREE.Object3D();
+  wide.position.set(178, 139, 1665);
+  wide.parent = playerCharacter.object;
+  const overhead = new THREE.Object3D();
+  overhead.position.set(0, 400, 0);
+  overhead.parent = playerCharacter.object;
+  const collect = new THREE.Object3D();
+  collect.position.set(40, 82, 94);
+  collect.parent = playerCharacter.object;
+  playerCharacter.cameras = { front, back, wide, overhead, collect };
+  game.activeCamera = playerCharacter.cameras.back;	
+}

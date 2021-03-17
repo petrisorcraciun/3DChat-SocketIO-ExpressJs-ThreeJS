@@ -6,11 +6,12 @@ const express       = require('express'),
       derange       = require('derange'),
       { v4: uuidV4} = require('uuid'),
       bodyParser    = require('body-parser'),
-      mysql = require('mysql'),
-      fetch = require('node-fetch'),
-      cors = require('cors');
+      mysql         = require('mysql'),
+      fetch         = require('node-fetch'),
+      cors          = require('cors')
+      multer        = require('multer');
 
-var world = require('./js/server_world');
+//var world = require('./js/server_world');
 
 const LocalStorage  = require('node-localstorage').LocalStorage;
 localStorage        = new LocalStorage('./scratch');
@@ -20,6 +21,25 @@ app.use(express.static('public'));
 app.use(cors());
 app.use(bodyParser.json());
 
+
+
+var storage = multer.diskStorage({
+  destination: function (req, file, cb){
+    cb(null, './uploads')
+  },
+  filename: function (req, file, cb){
+    cb(null, file.originalname)
+  }
+});
+
+var upload = multer({ storage : storage, limits: {
+  fileSize: 1000000 //give no. of bytes
+}});
+
+app.post('/upload', upload.single('file'), function (req, res, next) {
+  res.json({code : 1, file: req.file.filename});
+  res.end();
+});
 
 const rooms = { details: [
       {
@@ -181,24 +201,17 @@ io.on('connection', socket => {
 })
   
 
-socket.on('message', data => {
-  let jsonData = JSON.parse(data);
 
-  if (jsonData.type == 'move') {
-    for (let i = 0, cnt = users.details.length; i < cnt; ++i) {
-      let orge = users.details[i];
-      if (jsonData.userName === orge.userName) {
-        orge.type = jsonData.type;
-        orge.posX = jsonData.posX;
-        orge.posZ = jsonData.posZ;
-        orge.rotY = jsonData.rotY;
-        orge.delta = jsonData.delta;
-      }
-    }
-  }
-
-  socket.broadcast.emit('message', data);
+socket.on('newFileHasBeenUploaded', ({ fileName, roomID, userName }) => {
+    var data = {fileName, userName};
+    io.in(roomID).emit('newFile', data);
 })
+
+socket.on('callPet', ({ roomID, userName, position }) => {
+  var data = {roomID, userName, position};
+  io.in(roomID).emit('callPet', data);
+})
+
 
 
 socket.on('chat-message', ({ userId, msg, roomID }) => {
@@ -211,6 +224,8 @@ socket.on('chat-message', ({ userId, msg, roomID }) => {
     const pkg = { msg, sender: senderUsername }
     socket.to(roomID).broadcast.emit('chat-message', pkg);
 })
+
+
 
 
 socket.on('oModalForAllUsers', (roomID) => {
@@ -287,6 +302,7 @@ socket.on('disconnect', (reason) => {
     if (reason === 'transport close') {
 
       socket.to(disconnectedUser.roomID).emit('user-disconnected', disconnectedUser.userName + ' left the room');
+      io.in(disconnectedUser.roomID).emit('removeCharacter', disconnectedUser.userName)
       //delete users[disconnectedUser.socketID]
       users.details.forEach((element, index) => {
         if(element.socketID == socket.id) {
@@ -294,42 +310,10 @@ socket.on('disconnect', (reason) => {
         }
       });
       io.in(disconnectedUser.roomID).emit('room-update', Object.values(users).map(({ userName }) => userName ))
+      
     }
 
 })
-
-
-// ----
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ---- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 })
 
 
