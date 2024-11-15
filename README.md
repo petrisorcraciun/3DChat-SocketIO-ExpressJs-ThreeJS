@@ -50,7 +50,7 @@ npm run start
 ## Contact 📝
 If you need any help, you can connect with me.
 
-[![Linkedin Badge](https://img.shields.io/badge/-CrăciunPetrișor-blue?style=flat-square&logo=Linkedin&logoColor=white&link=https://www.linkedin.com/in/crăciun-petrișor/)](https://www.linkedin.com/in/crăciun-petrișor/) [![Gmail Badge](https://img.shields.io/badge/-Gmail-c14438?style=flat-square&logo=Gmail&logoColor=white&link=mailto:petrisor.craciun34@gmail.com)](mailto:petrisor.craciun34@gmail.com) 
+[![Linkedin Badge](https://img.shields.io/badge/-CrăciunPetrișor-blue?style=flat-square&logo=Linkedin&logoColor=white&link=https://www.linkedin.com/in/crăciun-petrișor/)](https://www.linkedin.com/in/crăciun-petrișor/)
 
 
 ## :heart: Found this project useful?
